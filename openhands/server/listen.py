@@ -862,4 +862,35 @@ def github_callback(auth_code: AuthCode):
     )
 
 
+@app.post('/api/translate')
+async def translate_code(request: Request):
+    data = await request.json()
+    source_language = data.get('sourceLanguage')
+    target_language = data.get('targetLanguage')
+    source_text = data.get('sourceText')
+
+    if not source_language or not target_language or not source_text:
+        raise HTTPException(status_code=400, detail='Missing required parameters')
+
+    try:
+        result = subprocess.run(
+            [
+                'python3',
+                './scripts/translate.py',
+                source_language,
+                target_language,
+                source_text,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        translated_text = result.stdout.strip()
+        return JSONResponse(
+            status_code=200, content={'translatedText': translated_text}
+        )
+    except subprocess.CalledProcessError as e:
+        return JSONResponse(status_code=500, content={'error': str(e)})
+
+
 app.mount('/', StaticFiles(directory='./frontend/build', html=True), name='dist')

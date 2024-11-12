@@ -14,6 +14,7 @@ import { ActionMessage, StatusMessage } from "#/types/Message";
 import { SocketMessage } from "#/types/ResponseType";
 import { handleObservationMessage } from "./observations";
 import { getRootTask } from "./taskService";
+// import { execFile } from "child_process";
 
 const messageActions = {
   [ActionType.BROWSE]: (message: ActionMessage) => {
@@ -85,6 +86,7 @@ const messageActions = {
       store.dispatch(setRootTask(fetchedRootTask)),
     );
   },
+  //   uvicorn listen:app --reload
 };
 
 function getRiskText(risk: ActionSecurityRisk) {
