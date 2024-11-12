@@ -76,7 +76,7 @@ function ChatInterface() {
     // 如果启用了 DialogMode，则发送请求到 anythingLLM API
     if (isEnabled) {
       toast.success(`AnythingLLM Mode:\nWorkspace Name: ${workspaceName}\nMode: ${mode}\nAPI: ${api}`);
-
+      dispatch(addUserMessage({ content, imageUrls, timestamp }));
       fetch(`http://localhost:3001/api/v1/workspace/${workspaceName.toLowerCase()}/chat`, {
         method: "POST",
         headers: {
@@ -92,8 +92,7 @@ function ChatInterface() {
       })
       .then(response => response.json())
       .then(data => {
-        toast.success(`Response received:\n${data.textResponse}`); // 使用 textResponse 字段
-        dispatch(addUserMessage({ content, imageUrls, timestamp }));
+        toast.success(`Response received:\n${data.textResponse}`); // 使用 textResponse 
         dispatch(addAssistantMessage(data.textResponse));  // 根据返回的结构更新消息
       })
       .catch(error => {

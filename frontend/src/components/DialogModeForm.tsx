@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { setDialogMode } from "../state/dialogModeSlice"; // 引入 setDialogMode
 import { RootState } from "../store";
 import { toast } from 'react-hot-toast';
-
 import { GetWorkspacesRequest, CreateWorkspaceRequest, DeleteWorkspaceRequest } from "#/services/workspaceRequests"; // 引入请求类
 
 export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
@@ -21,6 +20,10 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
   const [workspaceToDelete, setWorkspaceToDelete] = useState(""); // 删除工作区的名称
   const [isCreatingNewWorkspace, setIsCreatingNewWorkspace] = useState(false); // 是否正在创建新工作区
 
+  // 上传文件和链接相关的状态
+  const [link, setLink] = useState(""); 
+  const [file, setFile] = useState<File | null>(null);
+  
   useEffect(() => {
     if (isEnabled) {
       setLocalWorkspaceName(workspaceName);
@@ -98,13 +101,13 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
       toast.error("Workspace name cannot be empty.");
       return;
     }
-  
+
     try {
       const workspaceRequest = new CreateWorkspaceRequest(api); // 实例化请求类
       const data = await workspaceRequest.createWorkspace(newWorkspaceName);
-  
+      toast.success(`New "${data.workspace.name}" created!`);
       // 检查响应中的 workspace 对象
-      if (data.workspace && data.workspace.name) {
+      if (data.workspace.name) {
         // 新工作区创建成功，更新工作区列表并选择新创建的工作区
         setWorkspaces([...workspaces, data.workspace.name]);
         setLocalWorkspaceName(data.workspace.name); // 设置为新创建的工作区
@@ -118,33 +121,112 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
       toast.error("Failed to create new workspace.");
     }
   };
-  
+
   // 删除工作区
   const handleDeleteWorkspace = async () => {
     if (workspaceToDelete.trim() === "") {
       toast.error("Workspace name cannot be empty.");
       return;
     }
+    
+    // 弹出成功提示
+    toast.success(`Workspace "${workspaceToDelete}" deleted!`);
+    const deleteRequest = new DeleteWorkspaceRequest(api); // 实例化请求类
+    const data = await deleteRequest.deleteWorkspace(workspaceToDelete);
+    // 删除后更新工作区列表并清空相关字段
+    setWorkspaces((prevWorkspaces) =>
+      prevWorkspaces.filter((workspace) => workspace !== workspaceToDelete)
+    );
+    setWorkspaceToDelete(""); // 清空删除框
+    setLocalWorkspaceName(""); // 重置工作区名称选择框
+  
+  };
+  
+  // 处理link上传
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => { 
+    if (event.target.files) { 
+      setFile(event.target.files[0]); 
+    } 
+  };
+
+  const handleLinkUpload = async () => {
+    if (!link) {
+      toast.error("Link cannot be empty.");
+      return;
+    }
+  
+    // 打印即将发送的请求内容到toast
+    toast(`Uploading link: ${link}`);
+  
+    // 打印请求头，确保它与 curl 命令一致
+    //toast(`Request Headers: 
+      //Authorization: Bearer ${localApi}
+      //Content-Type: application/json
+      //Accept: application/json`);
   
     try {
-      const deleteRequest = new DeleteWorkspaceRequest(api); // 实例化请求类
-      const data = await deleteRequest.deleteWorkspace(workspaceToDelete);
+      // 发起 POST 请求
+      const response = await fetch('http://localhost:3001/api/v1/document/upload-link', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${localApi}`, // 确保 token 正确
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ link }), // 将 link 放入请求体
+      });
   
-      // 如果返回的响应是 "OK"，表示删除成功
-      if (data === "OK") {
-        // 删除成功后，更新工作区列表
-        setWorkspaces(workspaces.filter(workspace => workspace !== workspaceToDelete));
-        setWorkspaceToDelete(""); // 清空删除框
-        setLocalWorkspaceName(""); // 重置工作区名称选择框
-        toast.success(`Workspace "${workspaceToDelete}" deleted!`);
+      // 打印响应的原始文本，便于调试
+      const responseText = await response.text(); 
+      //toast(`Raw Response: ${responseText}`);
+  
+      // 解析响应
+      const data = JSON.parse(responseText);
+  
+      // 打印响应内容
+      //toast(`Parsed Response: ${JSON.stringify(data)}`);
+  
+      if (data.success) {
+        toast.success("Link uploaded successfully!");
+        setLink("");  // 清空链接输入框
       } else {
-        toast.error("Failed to delete workspace.");
+        toast.error(`Failed to upload link. Response: ${JSON.stringify(data)}`);
       }
     } catch (error) {
-      console.error("Error deleting workspace:", error);
-      toast.error("Failed to delete workspace.");
+      // 打印错误信息
+      toast.error(`Error uploading link!`);
     }
-  };  
+  };
+  
+  // 处理文件上传
+  const handleFileUpload = async () => { 
+    if (!file) { 
+      toast.error("No file selected."); 
+      return; 
+    } 
+    const formData = new FormData(); 
+    formData.append("file", file); 
+    try { 
+      const response = await fetch(`http://localhost:3001/api/v1/document/upload`, { 
+        method: 'POST', 
+        headers: { 
+          'accept': 'application/json', 
+          'Authorization': `Bearer ${localApi}`, 
+        }, 
+        body: formData, 
+      }); 
+      const data = await response.json(); 
+      if (data.success) { 
+        toast.success("File uploaded successfully!"); 
+        setFile(null); 
+      } else { 
+        toast.error("Failed to upload file."); 
+      } 
+    } catch (error) { 
+      console.error("Error uploading file:", error); 
+      toast.error("Failed to upload file."); 
+    } 
+  };
 
   // 关闭窗口并保存设置
   const handleClose = () => {
@@ -196,7 +278,7 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
                 </>
               )}
             </select>
-
+              
             {localWorkspaceName === "new" && (
               <div className="mt-4">
                 <label className="block text-sm">Enter New Workspace Name</label>
@@ -259,8 +341,40 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
               required
             />
           </div>
+          {/* 新增上传文件和链接输入框部分 */}
+        <div className="mt-4">
+          <label className="block text-sm">Upload File</label>
+          <input
+            type="file"
+            onChange={handleFileChange}
+            className="p-2 border rounded-md w-full mt-2"
+          />
+          <button
+            onClick={handleFileUpload}
+            className="mt-2 bg-blue-500 text-white p-2 rounded w-full"
+          >
+            Upload File
+          </button>
         </div>
-      )}
+
+        <div className="mt-4">
+          <label className="block text-sm">Upload Link</label>
+          <input
+            type="text"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            placeholder="Enter link"
+            className="p-2 border rounded-md w-full mt-2"
+          />
+          <button
+            onClick={handleLinkUpload}
+            className="mt-2 bg-blue-500 text-white p-2 rounded w-full"
+          >
+            Upload Link
+          </button>
+        </div>
+      </div>
+    )}
 
       <div className="flex justify-between gap-2 mt-4">
         <button
