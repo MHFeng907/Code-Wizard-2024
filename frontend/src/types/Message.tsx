@@ -1,9 +1,11 @@
+import ActionType from "#/types/ActionType";
+
 export interface ActionMessage {
   // Either 'agent' or 'user'
   source: string;
 
   // The action to be taken
-  action: string;
+  action: ActionType;
 
   // The arguments for the action
   args: Record<string, string>;
@@ -13,6 +15,12 @@ export interface ActionMessage {
 
   // The timestamp of the message
   timestamp: string;
+
+  // The type of the action
+  type: ActionType;
+
+  // Allow additional properties
+  [key: string]: any;
 }
 
 export interface ObservationMessage {

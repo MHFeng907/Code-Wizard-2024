@@ -14,8 +14,9 @@ import {
 import "./tailwind.css";
 import "./index.css";
 // import React from "react"; 2024修改
-import React, { useState } from "react";
-import { Toaster } from "react-hot-toast";
+import React, { useState, useEffect } from "react";
+// import { execFile } from "child_process";
+import { Toaster, toast } from "react-hot-toast";
 import CogTooth from "./assets/cog-tooth";
 import { SettingsForm } from "./components/form/settings-form";
 import AllHandsLogo from "#/assets/branding/all-hands-logo.svg?react";
@@ -29,11 +30,78 @@ import NewProjectIcon from "./assets/new-project.svg?react";
 import DocsIcon from "./assets/docs.svg?react";
 import VSOpenIcon from './assets/vsopen.svg?react'; // 2024新增
 import DialogModeIcon from './assets/dialogmode.svg?react'; // 2024新增
+// import an icon for language translation from'./assets/vsopen.svg?react'
+import LanTransIcon from './assets/lantrans.svg?react';
 import i18n from "./i18n";
 import { useSocket } from "./context/socket";
 import { UserAvatar } from "./components/user-avatar";
 import { DangerModal } from "./components/modals/confirmation-modals/danger-modal";
 import { DialogModeForm } from "./components/DialogModeForm"; // 2024新增
+import { useDispatch } from "react-redux";
+import { ActionMessage } from "#/types/Message";
+import ActionType from "#/types/ActionType";
+import { GoogleGenerativeAI } from "@google/generative-ai";  // 2024新增
+import { LanguageFactory, Language } from "./LanguageFactory"; // 导入工厂类
+
+const API_KEY = "AIzaSyCmSx2EJUSmXJNNm8MTvPrRpD1NOsRp8bw"; // 替换为你的 API 密钥
+const genAI = new GoogleGenerativeAI(API_KEY);
+
+const translateCode = async (sourceLanguage: string, targetLanguage: string, sourceText: string): Promise<string> => {
+  try {
+    const generationConfig = {
+      stopSequences: ["red"],
+      maxOutputTokens: 500,
+      temperature: 0.5,
+      topP: 1,
+      topK: 16,
+    };
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: generationConfig,
+    });
+
+    const prompt = `Translate the following ${sourceLanguage} code to ${targetLanguage}:\n\n${sourceText}`;
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const translatedText = response.text();
+
+    toast.success("Translation successful", { duration: 2000 });
+    return translatedText.trim();
+  } catch (error) {
+    toast.error("Error translating code", { duration: 3000 });
+    console.error("Error translating code:", error);
+    return "Translation failed";
+  }
+};
+
+declare global {
+  interface Window {
+    loadPyodide: () => Promise<any>;
+  }
+}
+
+interface Pyodide {
+  runPythonAsync: (code: string) => Promise<any>;
+  loadPackage: (packageName: string) => Promise<void>;
+}
+
+const loadPyodide = async (): Promise<Pyodide> => {
+  console.log("Loading Pyodide...");
+  if (!window.loadPyodide) {
+    throw new Error("Pyodide is not available on the window object.");
+  }
+  const pyodide = await window.loadPyodide();
+  console.log("Pyodide loaded.");
+  await pyodide.loadPackage("micropip");
+  console.log("micropip package loaded.");
+  await pyodide.runPythonAsync(`
+    import micropip
+    await micropip.install('google-generativeai')
+  `);
+  console.log("google-generativeai package installed.");
+  return pyodide;
+};
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -130,6 +198,42 @@ export default function App() {
 
   const handleVscodeModalClose = () => {
     setIsVscodeModalOpen(false);
+  };
+
+  const dispatch = useDispatch();
+  const [isLanTransModalOpen, setIsLanTransModalOpen] = useState(false);
+  const [sourceLanguage, setSourceLanguage] = useState("python");
+  const [targetLanguage, setTargetLanguage] = useState("java");
+  const [sourceText, setSourceText] = useState("");
+  const [translatedText, setTranslatedText] = useState("");
+  const [pyodide, setPyodide] = useState<Pyodide | null>(null);
+
+  useEffect(() => {
+    loadPyodide().then(setPyodide).catch((error) => {
+      console.error("Failed to load Pyodide:", error);
+    });
+  }, []);
+
+  const handleLanTransButtonClick = () => {
+    setIsLanTransModalOpen(true);
+  };
+
+  const handleLanTransModalClose = () => {
+    setIsLanTransModalOpen(false);
+    setSourceText("");
+    setTranslatedText("");
+  };
+
+  const handleTranslate = async () => {
+    try {
+      console.log("Translating code...");
+      const result = await translateCode(sourceLanguage, targetLanguage, sourceText);
+      console.log("Translation result:", result);
+      setTranslatedText(result);
+    } catch (error) {
+      console.error('Translation error:', error);
+      setTranslatedText('Translation failed');
+    }
   };
 
   const [accountSettingsModalOpen, setAccountSettingsModalOpen] =
@@ -269,7 +373,15 @@ export default function App() {
             onClick={() => setDialogModeModalIsOpen(true)}  // 点击时打开对话模式设置
             aria-label="Dialog Mode Settings"
           >
-            <DialogModeIcon width={28} height={28} />  {/* 可以使用一个新的图标 */}
+            <DialogModeIcon width={28} height={28} />
+          </button>
+          <button
+            type="button"
+            className="w-8 h-8 rounded-full hover:opacity-80 flex items-center justify-center"
+            onClick={handleLanTransButtonClick}
+            aria-label="LanTrans"
+          >
+            <LanTransIcon width={28} height={28} />
           </button>
         </nav>
       </aside>
@@ -380,6 +492,69 @@ export default function App() {
       {dialogModeModalIsOpen && (
         <ModalBackdrop onClose={() => setDialogModeModalIsOpen(false)}>
           <DialogModeForm onClose={() => setDialogModeModalIsOpen(false)} />
+          </ModalBackdrop>
+
+      )}
+
+      {isLanTransModalOpen && (
+        <ModalBackdrop onClose={handleLanTransModalClose}>
+          <div className="bg-root-primary w-[384px] p-6 rounded-xl flex flex-col gap-2">
+            <span className="text-xl leading-6 font-semibold -tracking-[0.01em]">
+              Language Translation
+            </span>
+            <div className="flex gap-2">
+              <select
+                value={sourceLanguage}
+                onChange={(e) => setSourceLanguage(e.target.value)}
+                className="p-2 border rounded-md"
+              >
+                {LanguageFactory.getLanguages().map((lang: Language) => (
+                  <option key={lang.value} value={lang.value}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={targetLanguage}
+                onChange={(e) => setTargetLanguage(e.target.value)}
+                className="p-2 border rounded-md"
+              >
+                {LanguageFactory.getLanguages().map((lang: Language) => (
+                  <option key={lang.value} value={lang.value}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              value={sourceText}
+              onChange={(e) => setSourceText(e.target.value)}
+              className="p-2 border rounded-md mt-2"
+              placeholder="Enter source text"
+              rows={4}
+            />
+            <textarea
+              value={translatedText}
+              readOnly
+              className="p-2 border rounded-md mt-2"
+              placeholder="Translated text"
+              rows={4}
+            />
+            <div className="flex justify-between gap-2 mt-4">
+              <button
+                className="bg-gray-500 text-white p-2 rounded"
+                onClick={handleLanTransModalClose}
+              >
+                Cancel
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded"
+                onClick={handleTranslate}
+              >
+                Translate
+              </button>
+            </div>
+          </div>
         </ModalBackdrop>
       )}
 
