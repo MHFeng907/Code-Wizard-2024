@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { Textarea } from "@nextui-org/react";
 import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
@@ -18,25 +18,30 @@ interface ChatInputProps {
     onSendMessage: (message: string, image_urls: string[]) => void;
 }
 
-function ChatInput({ disabled = false, onSendMessage }: ChatInputProps) {
+const ChatInput = forwardRef(({ disabled = false, onSendMessage }: ChatInputProps, ref) => {
     const { send } = useSocket();
     const { t } = useTranslation();
     const { curAgentState } = useSelector((state: RootState) => state.agent);
 
     const presetMessages = {
         '创建新项目': '请生成项目级代码，我需要此项目的完整文件夹、所有文件及其内容，并有一定的组织结构，请把项目文件夹放在我指定的路径下。\n存储路径：\n[请在此处输入项目文件夹存储路径]\n详细要求：\n[请在此处输入项目的具体要求]',
-        '代码语言转换': '请将我的代码文件进行语言转换。\n文件路径：\n[在这里输入你的文件路径]\n需要转换的程序语言：\n[请在此处输入该文件需要转换的程序语言]\n新文件存储路径：\n[请在此处输入转换后的文件存储路径]',
+        '代码语言转换': '请将我的代码文件进行语言转换。\n文件路径：\n[在这里输入你的文件路径]\n需要转换的程序语言：\n[请在此处输入该文件需要转换的程序语言]\n新文件存储路径：\n[请在此输入转换后的文件存储路径]',
         '代码片段生成': '请生成一个代码片段，完成以下任务：\n[在这里输入具体任务描述]\n代码需要高效，并遵循最佳实践，且包含关键部分的注释。',
         '函数重构优化': '请优化或重构以下代码：\n[在这里粘贴你的代码]\n改进方向是：\n[在这里描述希望改进的方面，如性能、可读性或遵循某些标准]\n请提供优化后的代码并解释所做的改进。',
         '测试用例生成': '请为以下功能生成单元测试代码：\n[在这里输入功能或类的描述]\n测试应包括不同场景，并验证代码的正确性。',
         '自定义': '自定义',
     };
 
-    const [message, setMessage] = React.useState("");
-    const [files, setFiles] = React.useState<File[]>([]);
-    const [isComposing, setIsComposing] = React.useState(false);
+    const [message, setMessage] = useState("");
+    const [files, setFiles] = useState<File[]>([]);
+    const [isComposing, setIsComposing] = useState(false);
     const [showContextMenu, setShowContextMenu] = useState(false);
     const [lastContextMenuClickTime, setLastContextMenuClickTime] = useState<number | null>(null);
+
+    useImperativeHandle(ref, () => ({
+        setMessage,
+        handleSendChatMessage,
+    }));
 
     const handleSendChatMessage = async () => {
         if (curAgentState === AgentState.RUNNING) {
@@ -113,6 +118,20 @@ function ChatInput({ disabled = false, onSendMessage }: ChatInputProps) {
         setMessage(presetMessages[option as keyof typeof presetMessages]);
         setShowContextMenu(false); // Close the context menu after selecting an option
     };
+
+    useEffect(() => {
+        const handleSendPrompt = (event: CustomEvent) => {
+            const { prompt } = event.detail;
+            setMessage(prompt);
+            handleSendChatMessage();
+        };
+
+        window.addEventListener('sendPrompt', handleSendPrompt as EventListener);
+
+        return () => {
+            window.removeEventListener('sendPrompt', handleSendPrompt as EventListener);
+        };
+    }, []);
 
     return (
         <div className="w-full relative text-base flex">
@@ -192,6 +211,6 @@ function ChatInput({ disabled = false, onSendMessage }: ChatInputProps) {
             )}
         </div>
     );
-}
+});
 
 export default ChatInput;
