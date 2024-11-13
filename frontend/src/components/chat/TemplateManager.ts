@@ -5,10 +5,10 @@ interface Template {
     name: string;
     content: string;
   }
-  
+
   class TemplateManager {
     private templates: Template[] = [];
-  
+
     constructor() {
       // 默认预设模板
       this.templates = [
@@ -20,17 +20,17 @@ interface Template {
         // 其他默认模板
       ];
     }
-  
+
     // 获取所有模板
     getTemplates(): Template[] {
       return this.templates;
     }
-  
+
     // 获取单个模板
     getTemplateById(id: string): Template | undefined {
       return this.templates.find(template => template.id === id);
     }
-  
+
     // 保存自定义模板
     saveTemplate(template: Template): void {
       const existingTemplateIndex = this.templates.findIndex(t => t.id === template.id);
@@ -41,7 +41,6 @@ interface Template {
       }
     }
   }
-  
+
   const templateManager = new TemplateManager();
   export default templateManager;
-  
