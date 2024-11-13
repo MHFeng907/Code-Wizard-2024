@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { setDialogMode } from "../state/dialogModeSlice"; // 引入 setDialogMode
 import { RootState } from "../store";
 import { toast } from 'react-hot-toast';
-import { GetWorkspacesRequest, CreateWorkspaceRequest, DeleteWorkspaceRequest } from "#/services/workspaceRequests"; // 引入请求类
+import { GetWorkspacesRequest, CreateWorkspaceRequest, DeleteWorkspaceRequest, LinkUploadRequest, FileUploadRequest } from "#/services/workspaceRequests"; // 引入请求类
 
 export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
   const dispatch = useDispatch();
@@ -21,9 +21,9 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
   const [isCreatingNewWorkspace, setIsCreatingNewWorkspace] = useState(false); // 是否正在创建新工作区
 
   // 上传文件和链接相关的状态
-  const [link, setLink] = useState(""); 
+  const [link, setLink] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  
+
   useEffect(() => {
     if (isEnabled) {
       setLocalWorkspaceName(workspaceName);
@@ -128,7 +128,7 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
       toast.error("Workspace name cannot be empty.");
       return;
     }
-    
+
     // 弹出成功提示
     toast.success(`Workspace "${workspaceToDelete}" deleted!`);
     const deleteRequest = new DeleteWorkspaceRequest(api); // 实例化请求类
@@ -139,93 +139,56 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
     );
     setWorkspaceToDelete(""); // 清空删除框
     setLocalWorkspaceName(""); // 重置工作区名称选择框
-  
-  };
-  
-  // 处理link上传
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => { 
-    if (event.target.files) { 
-      setFile(event.target.files[0]); 
-    } 
+
   };
 
+  // 处理link上传
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setFile(event.target.files[0]);
+    }
+  };
+
+  // 上传链接
   const handleLinkUpload = async () => {
     if (!link) {
       toast.error("Link cannot be empty.");
       return;
     }
-  
-    // 打印即将发送的请求内容到toast
-    toast(`Uploading link: ${link}`);
-  
-    // 打印请求头，确保它与 curl 命令一致
-    //toast(`Request Headers: 
-      //Authorization: Bearer ${localApi}
-      //Content-Type: application/json
-      //Accept: application/json`);
-  
+
     try {
-      // 发起 POST 请求
-      const response = await fetch('http://localhost:3001/api/v1/document/upload-link', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${localApi}`, // 确保 token 正确
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ link }), // 将 link 放入请求体
-      });
-  
-      // 打印响应的原始文本，便于调试
-      const responseText = await response.text(); 
-      //toast(`Raw Response: ${responseText}`);
-  
-      // 解析响应
-      const data = JSON.parse(responseText);
-  
-      // 打印响应内容
-      //toast(`Parsed Response: ${JSON.stringify(data)}`);
-  
+      const linkUploadRequest = new LinkUploadRequest(localApi); // 使用 LinkUploadRequest
+      const data = await linkUploadRequest.uploadLink(link);
       if (data.success) {
         toast.success("Link uploaded successfully!");
-        setLink("");  // 清空链接输入框
+        setLink(""); // 清空链接
       } else {
-        toast.error(`Failed to upload link. Response: ${JSON.stringify(data)}`);
+        toast.error(`Failed to upload link: ${data.message}`);
       }
     } catch (error) {
-      // 打印错误信息
-      toast.error(`Error uploading link!`);
+      toast.error("Error uploading link.");
     }
   };
-  
-  // 处理文件上传
-  const handleFileUpload = async () => { 
-    if (!file) { 
-      toast.error("No file selected."); 
-      return; 
-    } 
-    const formData = new FormData(); 
-    formData.append("file", file); 
-    try { 
-      const response = await fetch(`http://localhost:3001/api/v1/document/upload`, { 
-        method: 'POST', 
-        headers: { 
-          'accept': 'application/json', 
-          'Authorization': `Bearer ${localApi}`, 
-        }, 
-        body: formData, 
-      }); 
-      const data = await response.json(); 
-      if (data.success) { 
-        toast.success("File uploaded successfully!"); 
-        setFile(null); 
-      } else { 
-        toast.error("Failed to upload file."); 
-      } 
-    } catch (error) { 
-      console.error("Error uploading file:", error); 
-      toast.error("Failed to upload file."); 
-    } 
+
+  // 上传文件
+  const handleFileUpload = async () => {
+    if (!file) {
+      toast.error("No file selected.");
+      return;
+    }
+
+    try {
+      const fileUploadRequest = new FileUploadRequest(localApi); // 使用 FileUploadRequest
+      const data = await fileUploadRequest.uploadFile(file);
+      if (data.success) {
+        toast.success("File uploaded successfully!");
+        setFile(null); // 清空文件
+      } else {
+        toast.error(`Failed to upload file: ${data.message}`);
+      }
+    } catch (error) {
+      toast.error("Error uploading file.");
+    }
   };
 
   // 关闭窗口并保存设置
@@ -278,7 +241,7 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
                 </>
               )}
             </select>
-              
+
             {localWorkspaceName === "new" && (
               <div className="mt-4">
                 <label className="block text-sm">Enter New Workspace Name</label>

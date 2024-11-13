@@ -7,7 +7,8 @@ import { useFiles } from "#/context/files";
 import OpenHands from "#/api/open-hands";
 import { toast } from 'react-hot-toast';
 import * as monaco from 'monaco-editor';
-import { GoogleGenerativeAI } from "@google/generative-ai";  //2024修改
+import { GoogleGenerativeAI } from "@google/generative-ai";  // 2024 修改
+import SuggestionPopup from './SuggestionPopup'; // 根据实际路径调整
 
 interface CodeEditorCompoonentProps {
   isReadOnly: boolean;
@@ -57,6 +58,8 @@ function CodeEditorCompoonent({ isReadOnly }: CodeEditorCompoonentProps) {
     saveFileContent: saveNewFileContent,
   } = useFiles();
 
+  const [suggestion, setSuggestion] = useState<string | null>(null); // 新增状态管理建议内容
+  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
   const handleEditorDidMount = useCallback(
     (editor: monaco.editor.IStandaloneCodeEditor, monaco: Monaco): void => {
       monaco.editor.defineTheme("my-theme", {
@@ -78,26 +81,22 @@ function CodeEditorCompoonent({ isReadOnly }: CodeEditorCompoonentProps) {
             const currentLine = model.getLineContent(position.lineNumber);
             const completionItems: monaco.languages.InlineCompletion[] = [];
 
-            // Match text after '#'
             const regex = /#\s*(\S.*)/;
             const match = currentLine.match(regex);
 
             if (match && match[1]) {
               const functionName = match[1].trim();
 
-              // 使用定时器来实现延迟机制
               if (debounceTimeout) {
-                clearTimeout(debounceTimeout); // 清除上一个定时器
+                clearTimeout(debounceTimeout);
               }
 
-              // 设置新的定时器，2秒后发起AI请求
               debounceTimeout = setTimeout(async () => {
                 const suggestions = await fetchAICompletion(`Create function for ${functionName}`);
                 if (suggestions.length === 0) {
                   //toast.error('No suggestions returned from the AI model.', { duration: 3000 });
                 }
 
-                // Format suggestions for Monaco editor
                 suggestions.forEach((suggestion) => {
                   completionItems.push({
                     insertText: suggestion,
@@ -110,11 +109,9 @@ function CodeEditorCompoonent({ isReadOnly }: CodeEditorCompoonentProps) {
                   });
                 });
 
-                // 返回补全项
                 return { items: completionItems };
-              }, 1000); // 2秒延迟
+              }, 1000);
             } else {
-              // 如果没有匹配到 '#'
               const suggestions = await fetchAICompletion(currentLine);
               if (suggestions.length === 0) {
                 //toast.error('No suggestions returned from the AI model.', { duration: 3000 });
@@ -135,8 +132,11 @@ function CodeEditorCompoonent({ isReadOnly }: CodeEditorCompoonentProps) {
               return { items: completionItems };
             }
           },
-          freeInlineCompletions(arg) {
-            toast('Free completion triggered', { duration: 2000 });
+
+          // 添加 freeInlineCompletions 方法
+          freeInlineCompletions: (arg) => {
+            // 可选处理，当前不需要做任何操作
+            return [];
           },
         });
       });
@@ -144,6 +144,95 @@ function CodeEditorCompoonent({ isReadOnly }: CodeEditorCompoonentProps) {
       editor.onDidChangeModelContent((e) => {
         console.log('Editor content changed', e);
       });
+
+      // 监听光标选择变化（选中代码时触发）
+      editor.onDidChangeCursorSelection((e) => {
+        const selection = editor.getSelection();
+        if (!selection) return;
+
+        const selectedText = editor.getModel()?.getValueInRange(selection);
+        if (selectedText) {
+          //toast.success(`Selected text:\n${selectedText}`, { duration: 2000 });
+        }
+      });
+
+      // 监听快捷键 Shift + Alt + P 来生成代码注释
+      editor.addCommand(
+        monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyP,  // Shift + Alt + P 快捷键
+        async (e) => {
+          const selection = editor.getSelection();
+          if (!selection) return;
+      
+          const selectedText = editor.getModel()?.getValueInRange(selection);
+          if (!selectedText) return;
+      
+          // 将选中的代码按行分割
+          const lines = selectedText.split('\n');
+      
+          // 显示分割的行数
+          //toast(`分割的行数: ${lines.length}`, { duration: 2000 });
+      
+          // 对每一行代码生成简洁注释
+          const annotatedLines = await Promise.all(
+            lines.map(async (line) => {
+              const prompt = `为以下代码生成一句简洁的注释，不超过30字：\n${line}`;
+              const commentSuggestions = await fetchAICompletion(prompt);
+      
+              if (commentSuggestions.length > 0) {
+                // 简化注释，添加到代码后面
+                return `${line}  # ${commentSuggestions[0]}`; // 注释添加在代码后面，简洁说明
+              }
+              return line; // 如果没有注释返回原始代码
+            })
+          );
+      
+          // 将注释后的行重新合并成完整的文本
+          const updatedText = annotatedLines.join('\n');
+      
+          // 用生成的注释更新选中的代码
+          editor.executeEdits("generate-comments", [
+            {
+              range: selection,
+              text: updatedText, // 用注释替换选中的代码
+            },
+          ]);
+      
+          toast.success("注释已成功添加！", { duration: 2000 });
+        }
+      );
+      
+      // 代码建议
+editor.addCommand(
+  monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyL,
+  async () => {
+    const selection = editor.getSelection();
+    if (!selection) return;
+    const selectedText = editor.getModel()?.getValueInRange(selection);
+    if (!selectedText) return;
+
+    const suggestions = await fetchAICompletion(`Provide suggestions for the following code:\n${selectedText}`);
+    if (suggestions.length > 0) {
+      setSuggestion(suggestions[0]);
+
+      // 获取编辑器的宽度和高度
+      const editorDomNode = editor.getDomNode();
+      if (editorDomNode) {
+        const editorWidth = editorDomNode.clientWidth;
+        const editorHeight = editorDomNode.clientHeight;
+
+        // 计算中心位置
+        const top = (editorHeight / 2) - 20; // 根据需要调整位置
+        const left = (editorWidth / 2) - 100; // 根据需要调整位置
+
+        setPopupPosition({ top, left });
+      }
+    } else {
+      toast.error("No suggestions returned from the AI model.", { duration: 3000 });
+    }
+  }
+);
+
+      
     },
     []
   );
@@ -179,6 +268,10 @@ function CodeEditorCompoonent({ isReadOnly }: CodeEditorCompoonentProps) {
       document.removeEventListener("keydown", handleSave);
     };
   }, [saveNewFileContent, selectedPath]);
+
+  const closeSuggestion = () => {
+    setSuggestion(null); // 关闭建议窗口
+  };
 
   if (!selectedPath) {
     return (
