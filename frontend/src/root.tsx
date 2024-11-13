@@ -14,7 +14,7 @@ import {
 import "./tailwind.css";
 import "./index.css";
 // import React from "react"; 2024修改
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 // import { execFile } from "child_process";
 import { Toaster, toast } from "react-hot-toast";
 import CogTooth from "./assets/cog-tooth";
@@ -31,7 +31,8 @@ import DocsIcon from "./assets/docs.svg?react";
 import VSOpenIcon from './assets/vsopen.svg?react'; // 2024新增
 import DialogModeIcon from './assets/dialogmode.svg?react'; // 2024新增
 // import an icon for language translation from'./assets/vsopen.svg?react'
-import LanTransIcon from './assets/lantrans.svg?react';
+import LanTransIcon from './assets/Translate.svg?react';
+import GenProIcon from './assets/genpro.svg?react';
 import i18n from "./i18n";
 import { useSocket } from "./context/socket";
 import { UserAvatar } from "./components/user-avatar";
@@ -42,6 +43,7 @@ import { ActionMessage } from "#/types/Message";
 import ActionType from "#/types/ActionType";
 import { GoogleGenerativeAI } from "@google/generative-ai";  // 2024新增
 import { LanguageFactory, Language } from "./LanguageFactory"; // 导入工厂类
+
 
 const API_KEY = "AIzaSyCmSx2EJUSmXJNNm8MTvPrRpD1NOsRp8bw"; // 替换为你的 API 密钥
 const genAI = new GoogleGenerativeAI(API_KEY);
@@ -72,6 +74,54 @@ const translateCode = async (sourceLanguage: string, targetLanguage: string, sou
     toast.error("Error translating code", { duration: 3000 });
     console.error("Error translating code:", error);
     return "Translation failed";
+  }
+};
+
+const generateProject = async (projectPath: string, projectDescription: string, projectLanguage: string): Promise<string> => {
+  try {
+    const prompt = `Generate a project with the following details:\n\nPath: ${projectPath}\nDescription: ${projectDescription}\nLanguage: ${projectLanguage}`;
+    const generationConfig = {
+      stopSequences: ["red"],
+      maxOutputTokens: 500,
+      temperature: 0.5,
+      topP: 1,
+      topK: 16,
+    };
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: generationConfig,
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const notebookContent = response.text();
+
+    // 在 workspace 目录中生成 Jupyter notebook 文件
+    const notebookPath = `${projectPath}/generated_project.ipynb`;
+    await fetch('/api/save-notebook', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ path: notebookPath, content: notebookContent }),
+    });
+
+    // 执行 Jupyter notebook
+    await fetch('/api/execute-notebook', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ path: notebookPath }),
+    });
+
+    toast.success("Project generated successfully", { duration: 2000 });
+    return notebookPath;
+  } catch (error) {
+    toast.error("Error generating project", { duration: 3000 });
+    console.error("Error generating project:", error);
+    return "Generation failed";
   }
 };
 
@@ -202,11 +252,16 @@ export default function App() {
 
   const dispatch = useDispatch();
   const [isLanTransModalOpen, setIsLanTransModalOpen] = useState(false);
+  const [isProjectGenModalOpen, setIsProjectGenModalOpen] = useState(false);
+  const [projectPath, setProjectPath] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [projectLanguage, setProjectLanguage] = useState("");
   const [sourceLanguage, setSourceLanguage] = useState("python");
   const [targetLanguage, setTargetLanguage] = useState("java");
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
   const [pyodide, setPyodide] = useState<Pyodide | null>(null);
+  const chatInputRef = useRef<any>(null); // 使用 ref 获取 ChatInput 组件实例
 
   useEffect(() => {
     loadPyodide().then(setPyodide).catch((error) => {
@@ -218,10 +273,21 @@ export default function App() {
     setIsLanTransModalOpen(true);
   };
 
+  const handleProjectGenButtonClick = () => {
+    setIsProjectGenModalOpen(true);
+  };
+
   const handleLanTransModalClose = () => {
     setIsLanTransModalOpen(false);
     setSourceText("");
     setTranslatedText("");
+  };
+
+  const handleProjectGenModalClose = () => {
+    setIsProjectGenModalOpen(false);
+    setProjectPath("");
+    setProjectDescription("");
+    setProjectLanguage("");
   };
 
   const handleTranslate = async () => {
@@ -234,6 +300,13 @@ export default function App() {
       console.error('Translation error:', error);
       setTranslatedText('Translation failed');
     }
+  };
+
+  const handleGenerateProject = async () => {
+    const prompt = `Generate a project with the following details:\n\nPath: ${projectPath}\nDescription: ${projectDescription}\nLanguage: ${projectLanguage}`;
+    const event = new CustomEvent('sendPrompt', { detail: { prompt } });
+    window.dispatchEvent(event);
+    handleProjectGenModalClose();
   };
 
   const [accountSettingsModalOpen, setAccountSettingsModalOpen] =
@@ -383,6 +456,14 @@ export default function App() {
           >
             <LanTransIcon width={28} height={28} />
           </button>
+          <button
+            type="button"
+            className="w-8 h-8 rounded-full hover:opacity-80 flex items-center justify-center"
+            onClick={handleProjectGenButtonClick}
+            aria-label="ProjectGen"
+          >
+            <GenProIcon width={28} height={28} />
+          </button>
         </nav>
       </aside>
 
@@ -402,7 +483,7 @@ export default function App() {
         {(!settingsIsUpdated || settingsModalIsOpen) && (
           <ModalBackdrop onClose={() => setSettingsModalIsOpen(false)}>
             <div className="bg-root-primary w-[384px] p-6 rounded-xl flex flex-col gap-2">
-              <span className="text-xl leading-6 font-semibold -tracking-[0.01em">
+              <span className="text-xl leading-6 font-semibold -tracking-[0.01em]">
                 AI Provider Configuration
               </span>
               <p className="text-xs text-[#A3A3A3]">
@@ -557,7 +638,52 @@ export default function App() {
           </div>
         </ModalBackdrop>
       )}
-
+      {isProjectGenModalOpen && (
+        <ModalBackdrop onClose={handleProjectGenModalClose}>
+          <div className="bg-root-primary w-[384px] p-6 rounded-xl flex flex-col gap-2">
+            <span className="text-xl leading-6 font-semibold -tracking-[0.01em]">
+              Project Generation
+            </span>
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                value={projectPath}
+                onChange={(e) => setProjectPath(e.target.value)}
+                className="p-2 border rounded-md"
+                placeholder="Enter project path"
+              />
+              <textarea
+                value={projectDescription}
+                onChange={(e) => setProjectDescription(e.target.value)}
+                className="p-2 border rounded-md"
+                placeholder="Enter project description"
+                rows={2}
+              />
+              <input
+                type="text"
+                value={projectLanguage}
+                onChange={(e) => setProjectLanguage(e.target.value)}
+                className="p-2 border rounded-md"
+                placeholder="Enter project language (e.g., python)"
+              />
+            </div>
+            <div className="flex justify-between gap-2 mt-4">
+              <button
+                className="bg-gray-500 text-white p-2 rounded"
+                onClick={handleProjectGenModalClose}
+              >
+                Cancel
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded"
+                onClick={handleGenerateProject}
+              >
+                Generate Prompt
+              </button>
+            </div>
+          </div>
+        </ModalBackdrop>
+      )}
       </div>
 
     </div>
