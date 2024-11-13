@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import {
   ClientActionFunctionArgs,
@@ -13,6 +13,7 @@ import OpenHands from "#/api/open-hands";
 import { useSocket } from "#/context/socket";
 import CodeEditorCompoonent from "./code-editor-component";
 import { useFiles } from "#/context/files";
+import SuggestionPopup from './SuggestionPopup'; // 根据实际路径调整
 
 export const clientLoader = async () => {
   const token = localStorage.getItem("token");
@@ -54,12 +55,17 @@ function CodeEditor() {
     (state: RootState) => state.agent.curAgentState,
   );
 
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
+
+  const closeSuggestion = () => {
+    setSuggestion(null);
+  };
+
   React.useEffect(() => {
-    // only retrieve files if connected to WS to prevent requesting before runtime is ready
     if (runtimeActive && token) OpenHands.getFiles(token).then(setPaths);
   }, [runtimeActive, token]);
 
-  // Code editing is only allowed when the agent is paused, finished, or awaiting user input (server rules)
   const isEditingAllowed = React.useMemo(
     () =>
       agentState === AgentState.PAUSED ||
@@ -73,7 +79,18 @@ function CodeEditor() {
       <FileExplorer />
       <div className="flex flex-col min-h-0 w-full pt-3">
         <div className="flex grow items-center justify-center">
-          <CodeEditorCompoonent isReadOnly={!isEditingAllowed} />
+          <CodeEditorCompoonent 
+            isReadOnly={!isEditingAllowed}
+            setSuggestion={setSuggestion}
+            setPopupPosition={setPopupPosition}
+          />
+          {suggestion && popupPosition && (
+            <SuggestionPopup
+              suggestion={suggestion}
+              position={popupPosition}
+              onClose={closeSuggestion}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -81,3 +98,4 @@ function CodeEditor() {
 }
 
 export default CodeEditor;
+

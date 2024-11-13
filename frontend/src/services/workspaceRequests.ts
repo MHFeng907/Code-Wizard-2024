@@ -31,7 +31,7 @@ export class DeleteWorkspaceRequest extends ApiRequest {
       return this.request('/document/upload-link', 'POST', body);
     }
   }
-  
+
   // 文件上传
   export class FileUploadRequest extends ApiRequest {
     async uploadFile(file: File) {

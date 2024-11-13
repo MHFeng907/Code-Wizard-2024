@@ -20,24 +20,24 @@ const ContextMenuChat: React.FC<ContextMenuChatProps> = ({ onOptionSelect }) => 
     <div>
       <Menu
         menuButton={
-          <MenuButton className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-500 transition duration-200">
+          <MenuButton className="bg-blue-600 text-white p-1 text-sm rounded-md hover:bg-blue-500 transition duration-200">
             模板
           </MenuButton>
         }
-        className={twMerge('bg-gray-200 text-black rounded-md shadow-lg border border-gray-300', 'w-[200px]')}
+        className={twMerge('bg-gray-200 bg-opacity-70 text-black rounded-md shadow-lg border border-gray-300', 'w-[180px]')} // 缩小宽度
       >
         {templates.map((template) => (
           <MenuItem
             key={template.id}
             onClick={() => handleTemplateSelect(template)}
-            className="p-2 hover:bg-blue-500 rounded-md transition duration-150"
+            className="p-2 text-sm hover:bg-blue-500 rounded-md transition duration-150" // 字体稍微小一点
           >
             {template.name}
           </MenuItem>
         ))}
         <MenuItem
           onClick={() => setShowCustomDialog(true)}
-          className="p-2 hover:bg-blue-500 rounded-md transition duration-150"
+          className="p-2 text-sm hover:bg-blue-500 rounded-md transition duration-150" // 字体稍微小一点
         >
           自定义模板
         </MenuItem>
@@ -61,4 +61,3 @@ const ContextMenuChat: React.FC<ContextMenuChatProps> = ({ onOptionSelect }) => 
 };
 
 export default ContextMenuChat;
-

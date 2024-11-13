@@ -111,7 +111,7 @@ function ChatInput({ disabled = false, onSendMessage }: ChatInputProps) {
     const handleOptionSelect = (templateContent: string) => {
         setMessage(templateContent); // 设置选中的模板内容
         setShowContextMenu(false); // 隐藏右键菜单
-      };      
+      };
 
     return (
         <div className="w-full relative text-base flex">
