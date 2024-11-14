@@ -23,3 +23,20 @@ export class DeleteWorkspaceRequest extends ApiRequest {
       return this.request(endpoint, 'DELETE');
     }
   }
+
+  // 链接上传
+  export class LinkUploadRequest extends ApiRequest {
+    async uploadLink(link: string) {
+      const body = { link };
+      return this.request('/document/upload-link', 'POST', body);
+    }
+  }
+
+  // 文件上传
+  export class FileUploadRequest extends ApiRequest {
+    async uploadFile(file: File) {
+      const formData = new FormData();
+      formData.append("file", file);
+      return this.request('/document/upload', 'POST', null, formData);
+    }
+  }
