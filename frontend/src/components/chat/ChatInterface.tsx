@@ -92,7 +92,7 @@ function ChatInterface() {
       })
       .then(response => response.json())
       .then(data => {
-        toast.success(`Response received:\n${data.textResponse}`); // 使用 textResponse
+        //toast.success(`Response received:\n${data.textResponse}`); // 使用 textResponse
         dispatch(addAssistantMessage(data.textResponse));  // 根据返回的结构更新消息
       })
       .catch(error => {

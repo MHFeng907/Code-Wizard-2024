@@ -20,9 +20,9 @@ const SuggestionPopup: React.FC<SuggestionPopupProps> = ({ suggestion, position,
         overflowY: 'auto', // 允许垂直滚动
       }}
     >
-      <button 
-        onClick={onClose} 
-        className="absolute top-1 right-1" 
+      <button
+        onClick={onClose}
+        className="absolute top-1 right-1"
         style={{ color: '#333', background: 'none', border: 'none', cursor: 'pointer' }} // 深色叉
       >
         ×
@@ -33,4 +33,3 @@ const SuggestionPopup: React.FC<SuggestionPopupProps> = ({ suggestion, position,
 };
 
 export default SuggestionPopup;
-

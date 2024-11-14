@@ -187,7 +187,7 @@ export const DialogModeForm = ({ onClose }: { onClose: () => void }) => {
         toast.error(`Failed to upload file: ${data.message}`);
       }
     } catch (error) {
-      toast.error("Error uploading file.");
+      //toast.error("Error uploading file.");
     }
   };
 

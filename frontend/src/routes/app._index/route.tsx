@@ -79,7 +79,7 @@ function CodeEditor() {
       <FileExplorer />
       <div className="flex flex-col min-h-0 w-full pt-3">
         <div className="flex grow items-center justify-center">
-          <CodeEditorCompoonent 
+          <CodeEditorCompoonent
             isReadOnly={!isEditingAllowed}
             setSuggestion={setSuggestion}
             setPopupPosition={setPopupPosition}
@@ -98,4 +98,3 @@ function CodeEditor() {
 }
 
 export default CodeEditor;
-
