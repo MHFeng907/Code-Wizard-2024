@@ -303,7 +303,30 @@ export default function App() {
   };
 
   const handleGenerateProject = async () => {
-    const prompt = `Generate a project with the following details:\n\nPath: ${projectPath}\nDescription: ${projectDescription}\nLanguage: ${projectLanguage}`;
+    const prompt = `Generate a complete project with the following details:
+
+    Path: ${projectPath}
+    Description: ${projectDescription}
+    Language: ${projectLanguage}
+
+    Please generate the following:
+    1. Create the project directory structure based on the provided path.
+    2. Create all necessary project files with TypeScript (TSX) syntax. The project should include React components where applicable.
+    3. For each file, write the corresponding content that fits the description and language specified.
+    4. Include necessary configuration files such as:
+        - tsconfig.json for TypeScript configuration.
+        - package.json for Node.js package management.
+        - .gitignore for git version control exclusions.
+        - README.md with a brief description of the project.
+    5. Ensure the generated code follows TypeScript and React best practices, including proper type annotations, JSX/TSX syntax, and modular structure.
+    6. Include example React components in TSX format if needed, with appropriate props and state management.
+    7. Ensure all required dependencies (e.g., React, React-DOM, TypeScript) are included in the package.json.
+
+    Please provide the full structure with file names, folder hierarchy, and the content of each file in TSX format.`;
+
+
+
+
     const event = new CustomEvent('sendPrompt', { detail: { prompt } });
     window.dispatchEvent(event);
     handleProjectGenModalClose();
