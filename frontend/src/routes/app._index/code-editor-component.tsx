@@ -176,7 +176,7 @@ function CodeEditorCompoonent({ isReadOnly, setSuggestion, setPopupPosition }: C
           toast.success("注释已成功添加！", { duration: 2000 });
         }
       );
-      
+
       // 代码建议
       editor.addCommand(
         monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyL,
@@ -185,31 +185,31 @@ function CodeEditorCompoonent({ isReadOnly, setSuggestion, setPopupPosition }: C
           if (!selection) return;
           const selectedText = editor.getModel()?.getValueInRange(selection);
           if (!selectedText) return;
-      
+
           // 中文提示语
           const suggestions = await fetchAICompletion(`为以下代码提供一些建议：\n${selectedText}`);
-      
+
           if (suggestions.length > 0) {
             setSuggestion(suggestions[0]); // 获取第一条建议
-      
+
             // 直接使用返回的建议内容，而不进行格式化
             setSuggestion(suggestions[0]);
-      
+
             const editorDomNode = editor.getDomNode();
             if (editorDomNode) {
               const editorWidth = editorDomNode.clientWidth;
               const editorHeight = editorDomNode.clientHeight;
-      
-              const top = (editorHeight / 2) - 20; // 根据需要调整位置
-              const left = (editorWidth / 2) - 100; // 根据需要调整位置
-      
+
+              const top = (editorHeight / 2) - 20; 
+              const left = (editorWidth / 2) - 100; 
+
               setPopupPosition({ top, left });
             }
           } else {
             toast.error("没有从 AI 模型返回建议。", { duration: 3000 });
           }
         }
-      );          
+      );
     },
     [setSuggestion, setPopupPosition]
   );
@@ -276,4 +276,3 @@ function CodeEditorCompoonent({ isReadOnly, setSuggestion, setPopupPosition }: C
 }
 
 export default React.memo(CodeEditorCompoonent);
-
