@@ -303,26 +303,22 @@ export default function App() {
   };
 
   const handleGenerateProject = async () => {
-    const prompt = `Generate a complete project with the following details:
+    const prompt = `请根据以下要求生成一个完整的项目。你的任务是自动创建整个项目文件夹，并且将每个文件的内容写入对应文件。文件夹结构应根据用户提供的路径来创建，所有文件内容必须符合以下要求，每个文件中必须写入需要的内容：
 
-    Path: ${projectPath}
-    Description: ${projectDescription}
-    Language: ${projectLanguage}
+    路径: ${projectPath}
+    项目描述: ${projectDescription}
+    编程语言: ${projectLanguage}
 
-    Please generate the following:
-    1. Create the project directory structure based on the provided path.
-    2. Create all necessary project files with TypeScript (TSX) syntax. The project should include React components where applicable.
-    3. For each file, write the corresponding content that fits the description and language specified.
-    4. Include necessary configuration files such as:
-        - tsconfig.json for TypeScript configuration.
-        - package.json for Node.js package management.
-        - .gitignore for git version control exclusions.
-        - README.md with a brief description of the project.
-    5. Ensure the generated code follows TypeScript and React best practices, including proper type annotations, JSX/TSX syntax, and modular structure.
-    6. Include example React components in TSX format if needed, with appropriate props and state management.
-    7. Ensure all required dependencies (e.g., React, React-DOM, TypeScript) are included in the package.json.
+    项目要求：
+    1. 每个文件中必须写入需要的内容，必须包括项目所需的所有必要文件，例如源代码文件、配置文件、依赖管理文件等，每个文件中必须写入需要的内容。
+    2. 每个文件中必须写入需要的内容，如果有配置文件（例如 config.py、tsconfig.json、package.json 等），请生成并确保其内容符合项目要求。
+    3. 每个文件中必须写入需要的内容，请确保每个文件中的代码符合项目要求的编程规范和最佳实践。
+    4. 每个文件中必须写入需要的内容，请包括 README.md 文件，简要描述项目功能、使用方式等。
+    5. 每个文件中必须写入需要的内容，如果项目中涉及多个文件夹，请确保文件夹结构清晰，文件内容与其功能相符。
 
-    Please provide the full structure with file names, folder hierarchy, and the content of each file in TSX format.`;
+    其他要求：
+    1. 如果有需要的外部依赖，请在项目中包括并描述如何安装和使用这些依赖（如通过 requirements.txt、package.json 等）。
+    2. 请根据项目描述生成必要的示例代码、注释和文档。`;
 
 
 
