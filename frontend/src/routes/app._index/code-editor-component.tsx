@@ -200,13 +200,10 @@ function CodeEditorCompoonent({ isReadOnly, setSuggestion, setPopupPosition }: C
               const editorWidth = editorDomNode.clientWidth;
               const editorHeight = editorDomNode.clientHeight;
 
-<<<<<<< HEAD
+
               const top = (editorHeight / 2) - 20;
               const left = (editorWidth / 2) - 100;
-=======
-              const top = (editorHeight / 2) - 20; 
-              const left = (editorWidth / 2) - 100; 
->>>>>>> e6bd57f6851359d2cef051a346365c11062814fe
+
 
               setPopupPosition({ top, left });
             }
